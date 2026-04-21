@@ -188,26 +188,17 @@ npm install && npm run dev                 # :5173 — 开浏览器就能用
 
 ## 界面
 
-```
-┌─────────────┬─────────────────────────────┬──────────────────┐
-│  Sidebar    │      Document Hub           │    AgentDock     │
-│             │                             │                  │
-│  ◆ 工作区   │   [#] 2024-notes.md         │   you>  帮我把   │
-│  ├─ 技术/   │                             │         这周的   │
-│  │  └─ ... │   # Agent Evaluation        │         开会记录 │
-│  ├─ 生活/   │                             │         汇总    │
-│  └─ 项目/   │   AgentBench proposes task- │                  │
-│             │   success-rate as ...       │   more> ✓ 找到  │
-│  ◇ 最近     │                             │         3 篇... │
-│             │                             │                  │
-└─────────────┴─────────────────────────────┴──────────────────┘
-                                              ↑
-                                         SSE stream
-```
+<p align="center">
+  <img src="./assets/screenshot.png" alt="more · 三栏工作区界面" width="100%"/>
+</p>
 
-左边是工作区目录树，中间是分 tab 的 Markdown 编辑器，右边是可常驻的对话抽屉。一切为"笔记 + 对话"同屏而生。
+三栏布局，一眼看懂：
 
-> 想要截图？跑起来截一张贴到 `assets/screenshot.png` 即可，README 会自动显示。
+- **左 · Sidebar** · 工作区导航、目录树、标签聚合（`#caching` / `#system-design`…）、最近笔记
+- **中 · Document Hub** · 分 tab 的 Markdown 编辑器，所见即所得，同时开多个笔记互相引用
+- **右 · Parallel Copilot** · 常驻对话抽屉，带你当前笔记上下文回答；每条回答都是 `@笔记名` 引用，可点击跳回原文
+
+为 "笔记 + 对话" 同屏并行设计 —— 你在读，它在帮你想；你在写，它在帮你查。
 
 ---
 
