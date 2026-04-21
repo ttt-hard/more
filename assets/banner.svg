@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-label="less is more">
+  <title>less is more</title>
+  <desc>Minimalist pixel-art banner. The phrase "LESS IS MORE" rendered as a bitmap font (each letter built from 10px square pixels on a 5x7 grid). No decoration, no extra text.</desc>
+
+  <defs>
+    <!-- Pixel-font letters on a 5w x 7h grid, 10px per pixel.
+         Origin (0,0) = top-left of each letter.
+         Regular letters: 50w x 70h. Wide M: 70w x 70h. Narrow I: 30w x 70h. -->
+    <g id="pxL">
+      <rect x="0"  y="0"  width="10" height="70"/>
+      <rect x="0"  y="60" width="50" height="10"/>
+    </g>
+    <g id="pxE">
+      <rect x="0"  y="0"  width="50" height="10"/>
+      <rect x="0"  y="0"  width="10" height="70"/>
+      <rect x="0"  y="30" width="40" height="10"/>
+      <rect x="0"  y="60" width="50" height="10"/>
+    </g>
+    <g id="pxS">
+      <rect x="0"  y="0"  width="50" height="10"/>
+      <rect x="0"  y="0"  width="10" height="40"/>
+      <rect x="0"  y="30" width="50" height="10"/>
+      <rect x="40" y="30" width="10" height="40"/>
+      <rect x="0"  y="60" width="50" height="10"/>
+    </g>
+    <g id="pxI">
+      <rect x="0"  y="0"  width="30" height="10"/>
+      <rect x="10" y="0"  width="10" height="70"/>
+      <rect x="0"  y="60" width="30" height="10"/>
+    </g>
+    <g id="pxM">
+      <rect x="0"  y="0"  width="10" height="70"/>
+      <rect x="60" y="0"  width="10" height="70"/>
+      <rect x="0"  y="0"  width="70" height="10"/>
+      <rect x="20" y="10" width="10" height="20"/>
+      <rect x="40" y="10" width="10" height="20"/>
+      <rect x="30" y="20" width="10" height="20"/>
+    </g>
+    <g id="pxO">
+      <rect x="0"  y="0"  width="50" height="10"/>
+      <rect x="0"  y="0"  width="10" height="70"/>
+      <rect x="40" y="0"  width="10" height="70"/>
+      <rect x="0"  y="60" width="50" height="10"/>
+    </g>
+    <g id="pxR">
+      <rect x="0"  y="0"  width="50" height="10"/>
+      <rect x="0"  y="0"  width="10" height="70"/>
+      <rect x="40" y="0"  width="10" height="40"/>
+      <rect x="0"  y="30" width="50" height="10"/>
+      <rect x="30" y="40" width="10" height="10"/>
+      <rect x="40" y="50" width="10" height="20"/>
+    </g>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="320" fill="#0a0e1a"/>
+
+  <!-- "LESS IS MORE"
+       Layout (10px per pixel, 20px inter-letter gap, 60px word gap):
+         L(0..50) · E(70..120) · S(140..190) · S(210..260)
+         word-gap 60
+         I(320..350) · S(370..420)
+         word-gap 60
+         M(480..550) · O(570..620) · R(640..690) · E(710..760)
+       Total width 760. Canvas 1200 → center offset x = (1200-760)/2 = 220.
+       Letter height 70. Canvas 320 → center offset y = (320-70)/2 = 125. -->
+  <g fill="#f4f4f5" transform="translate(220 125)">
+    <use href="#pxL" x="0"/>
+    <use href="#pxE" x="70"/>
+    <use href="#pxS" x="140"/>
+    <use href="#pxS" x="210"/>
+
+    <use href="#pxI" x="320"/>
+    <use href="#pxS" x="370"/>
+
+    <use href="#pxM" x="480"/>
+    <use href="#pxO" x="570"/>
+    <use href="#pxR" x="640"/>
+    <use href="#pxE" x="710"/>
+  </g>
+</svg>

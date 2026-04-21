@@ -1,0 +1,77 @@
+# ---------------------------------------------------------------------------
+# more · root gitignore
+# ---------------------------------------------------------------------------
+#
+# Keep the repo small: no secrets, no build artefacts, no pytest tmp dirs,
+# no workspace content. Less is more.
+
+# ---- Python --------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+env/
+.python-version
+
+# ---- Node / frontend -----------------------------------------------------
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# ---- Env / secrets -------------------------------------------------------
+.env
+.env.local
+.env.*.local
+*.secret
+
+# ---- Tests (not published to the public repo) ----------------------------
+# Keep locally for development; do not ship to GitHub.
+backend/tests/
+backend/conftest.py
+backend/evals/
+backend/docs/
+
+# ---- Tests & eval scratch dirs (the real mess) ---------------------------
+# These are created by `python -m pytest` and the various smoke scripts.
+# None of them are needed after the run finishes; they just pile up.
+.pytest_cache/
+.pytest-*/
+pytest-tmp-*/
+.pytest-tmp/
+.pytest-tmp-*/
+.pytest-run-*/
+.manual-test-runs/
+.manual-test-runs-*/
+test-workdirs/
+tmp*/
+more-smoke-*/
+.smoke-*/
+smoke-*/
+scratch-*/
+
+# ---- Logs / runtime artefacts --------------------------------------------
+*.log
+agentops.log
+.uvicorn.*.log
+
+# ---- IDE / OS ------------------------------------------------------------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.qoder/
+
+# ---- Workspace content ---------------------------------------------------
+# The `workspace/` folder is the user's personal notes. Don't ship it.
+workspace/
+demo-workspace/
+
+# ---- LLM / LiteLLM cache -------------------------------------------------
+.litellm_cache/
+
+# ---- Backup files from in-progress edits ---------------------------------
+*.backup.*.txt
+*.bak

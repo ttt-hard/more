@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+<!--
+  Minimal ClickHouse cluster config for single-node Langfuse self-hosting.
+
+  Langfuse's ClickHouse migrations use `CREATE TABLE ... ON CLUSTER default
+  ENGINE = ReplicatedMergeTree(...)`. That requires three things that aren't
+  on by default in the stock `clickhouse/clickhouse-server` image:
+
+    1. A cluster named `default` must be defined (even a 1-replica one),
+       otherwise `ON CLUSTER default` fails with "cluster not found".
+    2. Some ZooKeeper-like coordination service must be reachable,
+       otherwise `ReplicatedMergeTree` fails with "There is no Zookeeper
+       configuration in server config" (Langfuse error code 139).
+    3. Per-node macros (cluster/shard/replica) so the engine can resolve
+       its identity when creating the replicated path in ZK.
+
+  We use ClickHouse Keeper in embedded mode (built-in Raft-based ZK
+  replacement) instead of running a separate zookeeper container — it's
+  officially supported for single-node deployments and keeps the compose
+  file down to one fewer service.
+
+  This config is mounted read-only into /etc/clickhouse-server/config.d/
+  which is the officially supported drop-in directory; existing defaults
+  from /etc/clickhouse-server/config.xml are preserved.
+-->
+<clickhouse>
+    <!-- Embedded Keeper: acts as the ZK quorum for this single node.
+         Listens on 9181 (in-container), Raft on 9234. server_id=1 is
+         unique per node; we only have one so hardcoded is fine. -->
+    <keeper_server>
+        <tcp_port>9181</tcp_port>
+        <server_id>1</server_id>
+        <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
+        <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+        <coordination_settings>
+            <operation_timeout_ms>10000</operation_timeout_ms>
+            <session_timeout_ms>30000</session_timeout_ms>
+            <raft_logs_level>warning</raft_logs_level>
+        </coordination_settings>
+        <raft_configuration>
+            <server>
+                <id>1</id>
+                <hostname>localhost</hostname>
+                <port>9234</port>
+            </server>
+        </raft_configuration>
+    </keeper_server>
+
+    <!-- Point the MergeTree engine at our embedded keeper. `localhost`
+         here resolves inside the clickhouse container to the keeper
+         above (same process). -->
+    <zookeeper>
+        <node>
+            <host>localhost</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
+
+    <!-- `default` cluster: a single shard with a single replica pointing
+         at ourselves. Langfuse migrations reference this name explicitly. -->
+    <remote_servers>
+        <default>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>clickhouse</host>
+                    <port>9000</port>
+                    <user>clickhouse</user>
+                    <password>clickhouse</password>
+                </replica>
+            </shard>
+        </default>
+    </remote_servers>
+
+    <!-- Per-replica macros substituted into ReplicatedMergeTree ZK paths.
+         Without these, `{replica}` etc. in the migrations expand to empty
+         strings and the engine errors with "path already exists". -->
+    <macros>
+        <cluster>default</cluster>
+        <shard>01</shard>
+        <replica>clickhouse-01</replica>
+    </macros>
+</clickhouse>

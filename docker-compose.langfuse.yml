@@ -1,0 +1,178 @@
+# Self-hosted Langfuse v3 stack — optional observability plane for more backend.
+#
+# Usage:
+#   docker compose -f docker-compose.langfuse.yml up -d
+#
+# What runs:
+#   - langfuse-web     :3000   UI + ingest API
+#   - langfuse-worker  (no port) background processor (evals, aggregation)
+#   - postgres         :5432   metadata / auth / project config
+#   - clickhouse       :8123   trace storage (high-volume time-series)
+#   - redis            :6379   queue between web and worker
+#   - minio            :9000   blob store for large payloads (prompt/completion)
+#
+# Data persistence: four named volumes; nothing stored in bind mounts so a
+# `docker compose down -v` wipes cleanly, but plain `down` preserves traces.
+#
+# First-time bootstrap after `up -d`:
+#   1. Open http://localhost:3000 and create a local account (no email
+#      verification needed in self-hosted mode; `LANGFUSE_INIT_*` below
+#      seeds a user automatically if you keep it set).
+#   2. Create an organisation + project, copy the `pk-lf-...` / `sk-lf-...`.
+#   3. Put them in `backend/.env` (see `.env.example`).
+#   4. `pip install -e .[observability]` in the backend virtualenv.
+#   5. Restart uvicorn — every turn now shows up under Sessions in the UI.
+#
+# This stack is intentionally kept out of the main compose file so it stays
+# opt-in: `docker compose up` without `-f` only brings the app up, never
+# the observability plane.
+
+services:
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      SALT: "${LANGFUSE_SALT:-changeme-salt-32-chars-xxxxxxxxxx}"
+      ENCRYPTION_KEY: "${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}"
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: "events/"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: ""
+
+  langfuse-web:
+    image: langfuse/langfuse:3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/postgres
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: "${LANGFUSE_NEXTAUTH_SECRET:-changeme-nextauth-secret}"
+      SALT: "${LANGFUSE_SALT:-changeme-salt-32-chars-xxxxxxxxxx}"
+      ENCRYPTION_KEY: "${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}"
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_PREFIX: "events/"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_AUTH: ""
+      # Seed a local user + organisation + project + API keys on very
+      # first boot so `pip install + uvicorn` works without anyone ever
+      # opening the Langfuse UI. Langfuse v3 requires ALL of ORG_ID,
+      # PROJECT_ID, and PROJECT_*_KEY to be set together — missing any
+      # disables the whole init-script block and you have to register
+      # manually in the UI. Override these for shared / prod deploys.
+      LANGFUSE_INIT_ORG_ID: "${LANGFUSE_INIT_ORG_ID:-local-org}"
+      LANGFUSE_INIT_ORG_NAME: "${LANGFUSE_INIT_ORG_NAME:-local}"
+      LANGFUSE_INIT_PROJECT_ID: "${LANGFUSE_INIT_PROJECT_ID:-local-project}"
+      LANGFUSE_INIT_PROJECT_NAME: "${LANGFUSE_INIT_PROJECT_NAME:-more}"
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: "${LANGFUSE_INIT_PROJECT_PUBLIC_KEY:-pk-lf-local-more-public-key-0000}"
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: "${LANGFUSE_INIT_PROJECT_SECRET_KEY:-sk-lf-local-more-secret-key-0000}"
+      LANGFUSE_INIT_USER_EMAIL: "${LANGFUSE_INIT_USER_EMAIL:-admin@local.host}"
+      LANGFUSE_INIT_USER_PASSWORD: "${LANGFUSE_INIT_USER_PASSWORD:-admin1234}"
+      LANGFUSE_INIT_USER_NAME: "${LANGFUSE_INIT_USER_NAME:-Local Admin}"
+      TELEMETRY_ENABLED: "false"
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - langfuse-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      CLICKHOUSE_DB: default
+    volumes:
+      - langfuse-clickhouse-data:/var/lib/clickhouse
+      - langfuse-clickhouse-logs:/var/log/clickhouse-server
+      # Drop-in config providing a `default` cluster + embedded Keeper so
+      # Langfuse's `ReplicatedMergeTree ON CLUSTER default` migrations
+      # succeed without running a separate zookeeper container.
+      - ./deploy/clickhouse/config.xml:/etc/clickhouse-server/config.d/langfuse-cluster.xml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - langfuse-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    volumes:
+      - langfuse-minio:/data
+    # Auto-create the `langfuse` bucket on first boot so the workers can
+    # upload blob payloads without hand-bootstrapping via the MinIO UI.
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  langfuse-postgres: {}
+  langfuse-clickhouse-data: {}
+  langfuse-clickhouse-logs: {}
+  langfuse-redis: {}
+  langfuse-minio: {}

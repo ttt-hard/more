@@ -1,0 +1,47 @@
+[project]
+name = "more-backend"
+version = "0.1.0"
+description = "Backend foundation for more"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115.0",
+  "httpx>=0.27.0",
+  "litellm>=1.52.0",
+  "pydantic>=2.9.0",
+  "pypdf>=5.0.0",
+  "pyyaml>=6.0.2",
+  "uvicorn[standard]>=0.32.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+]
+rag = [
+  "fastembed>=0.4.2",
+]
+# Langfuse self-hosted observability. Opt-in: only installed when explicitly
+# requested via `pip install -e .[observability]`. When the package is not
+# importable AND/OR LANGFUSE_SECRET_KEY is not set, every trace decorator in
+# `app/observability_langfuse.py` degrades to a pass-through so hot paths pay
+# zero overhead and CI has no new dependency.
+observability = [
+  "langfuse>=3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+# Explicit package discovery. Without this, setuptools auto-discovery walks
+# the repo root and trips on pytest's leftover `tmp*/` and `.pytest-*/`
+# directories, aborting `pip install -e .` with "Multiple top-level packages
+# discovered in a flat-layout". The only real package here is `app`; `evals`,
+# `scripts`, `tests`, and every `tmp*/` / `test-workdirs/` sibling are
+# supporting directories that must never land in the wheel.
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
